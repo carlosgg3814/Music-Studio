@@ -11,11 +11,19 @@
 <title>Estudio de Práctica</title>
 <style>
   :root{
-    --bg:#12141a; --panel:#1b1e27; --panel2:#161922; --line:#2a2e3a;
-    --text:#e8e6df; --dim:#8b8fa0; --amber:#f0a832; --amber-soft:#f0a83226;
-    --teal:#3fbf9f; --teal-soft:#3fbf9f22; --red:#e26a5a;
+    --bg:#181a20; --panel:#22252e; --panel2:#1c1f27; --line:#333747;
+    --text:#e9e7e0; --dim:#9498a6; --amber:#e6a04a; --amber-soft:#e6a04a26;
+    --teal:#4ec9a8; --teal-soft:#4ec9a822; --red:#e2786a;
     --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    color-scheme: dark;
   }
+  :root[data-theme="light"]{
+    --bg:#f6f4ef; --panel:#ffffff; --panel2:#f0ede4; --line:#ddd8ca;
+    --text:#2c2b28; --dim:#6d6a63; --amber:#b9772a; --amber-soft:#b9772a1f;
+    --teal:#1f8f74; --teal-soft:#1f8f741f; --red:#c1503d;
+    color-scheme: light;
+  }
+  * { transition: background-color .2s, border-color .2s, color .2s; }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{background:var(--bg); color:var(--text);
     font-family:'Avenir Next','Segoe UI',system-ui,sans-serif; font-size:15px;}
@@ -27,9 +35,17 @@
   button.active{background:var(--amber-soft); border-color:var(--amber); color:var(--amber);}
   button.teal.active{background:var(--teal-soft); border-color:var(--teal); color:var(--teal);}
   input[type=range]{accent-color:var(--amber); width:100%;}
-  input[type=text],input[type=number],textarea{background:var(--panel2); border:1px solid var(--line);
+  input[type=text],input[type=number],textarea,select{background:var(--panel2); border:1px solid var(--line);
     color:var(--text); border-radius:8px; padding:7px 10px; font-size:14px; width:100%;}
   textarea{font-family:var(--mono); font-size:12.5px; resize:vertical;}
+
+  #chordReadout{margin-top:12px; text-align:center; font-size:38px; font-weight:700; color:var(--amber);
+    background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:14px 8px;
+    font-family:var(--mono); letter-spacing:.02em;}
+  #chordReadout.idle{color:var(--dim); font-size:16px; font-weight:500;}
+  #chordHistory{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; min-height:24px;}
+  #chordHistory span{font-family:var(--mono); font-size:12px; color:var(--dim); background:var(--panel2);
+    border:1px solid var(--line); border-radius:6px; padding:2px 8px;}
 
   header{display:flex; align-items:center; gap:14px; padding:14px 20px;
     border-bottom:1px solid var(--line); flex-wrap:wrap;}
@@ -102,7 +118,7 @@
   .lline:hover{color:var(--text);}
   .lline.now{color:var(--amber); font-weight:600; background:var(--amber-soft);}
   .lline.plain{cursor:default;}
-  #lyricsTools{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center;}
+  #lyricsTools, .toolsRow{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center;}
   #lrcOffsetVal{font-family:var(--mono); font-size:12.5px; color:var(--amber); min-width:64px; text-align:center;}
 
   /* ---- Karaoke fullscreen ---- */
@@ -168,6 +184,7 @@
   <div class="logo">Estudio <span>/ práctica</span></div>
   <input id="songTitle" type="text" placeholder="Título de la canción" aria-label="Título de la canción">
   <button id="libraryBtn" title="Ver canciones guardadas">📚 Biblioteca</button>
+  <button id="themeToggle" title="Cambiar modo claro/oscuro">🌙</button>
   <div id="saveState">Sin sesión</div>
 </header>
 
@@ -202,6 +219,32 @@
         <input id="metBeats" type="number" min="1" max="12" value="4" aria-label="Pulsos por compás">
         <span style="color:var(--dim); font-size:12.5px;">Volumen</span>
         <input id="metVol" type="range" min="0" max="100" value="60" style="width:90px;" aria-label="Volumen del metrónomo">
+      </div>
+      <div class="metRow" style="margin-top:8px;">
+        <select id="tempoSource" aria-label="Fuente a analizar para tempo" style="flex:1; min-width:120px;">
+          <option value="master">Mezcla completa</option>
+        </select>
+        <button id="tempoDetectBtn" title="Analiza la fuente elegida y ajusta el BPM automáticamente">🎯 Detectar tempo</button>
+      </div>
+      <div style="font-size:11.5px; color:var(--dim); margin-top:6px; line-height:1.4;">
+        Funciona mejor sobre una pista con pulso claro (batería, bajo) que sobre la voz. Es aproximado —
+        si el resultado suena a la mitad o al doble del pulso real, ajusta el BPM manualmente.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Acordes en vivo</h2>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="chordSource" aria-label="Fuente a analizar" style="flex:1; min-width:140px;">
+          <option value="master">Mezcla completa</option>
+        </select>
+        <button id="chordToggle">▶ Activar</button>
+      </div>
+      <div id="chordReadout">—</div>
+      <div id="chordHistory"></div>
+      <div style="font-size:11.5px; color:var(--dim); margin-top:8px; line-height:1.4;">
+        Detección aproximada (tríadas mayor/menor) sobre la fuente elegida. Funciona mejor sobre un
+        instrumento o voz ya separados que sobre la mezcla completa, y mejor en progresiones simples.
       </div>
     </div>
   </section>
@@ -281,6 +324,16 @@
         <button id="lrcPlus" title="Retrasar letra 100 ms">+0.1 s</button>
         <button id="karaokeBtn" title="Ver letra en pantalla completa, tipo karaoke">⛶ Pantalla completa</button>
       </div>
+      <div class="toolsRow" style="margin-top:-4px;">
+        <select id="lyricsSource" aria-label="Fuente a transcribir" style="flex:1; min-width:130px;">
+          <option value="master">Mezcla completa</option>
+        </select>
+        <button id="lrcTranscribeBtn" title="Transcribe la letra automáticamente desde el audio (corre en tu navegador)">🎙️ Transcribir del audio</button>
+      </div>
+      <div style="font-size:11.5px; color:var(--dim); margin:-4px 0 10px; line-height:1.4;">
+        La primera vez descarga un modelo de voz a texto (~40-80 MB, se guarda en el navegador). Funciona mejor
+        sobre el stem de voz ya separado que sobre la mezcla completa, y nunca es 100% exacta — revísala.
+      </div>
       <textarea id="lrcEditor" class="hidden" rows="10"
         placeholder="Pega aquí el contenido .lrc, por ejemplo:&#10;[00:12.30]Primera línea de la letra&#10;[00:16.10]Segunda línea…&#10;&#10;(También acepta letra sin tiempos — se mostrará estática.)"></textarea>
       <button id="lrcApply" class="hidden" style="margin-top:8px;">Aplicar letra</button>
@@ -297,6 +350,7 @@
   <kbd>↑</kbd>/<kbd>↓</kbd> tono ±1 st · <kbd>,</kbd>/<kbd>.</kbd> velocidad ±5 % ·
   <kbd>K</kbd> letra en pantalla completa · <kbd>Esc</kbd> cerrarla
   &nbsp;—&nbsp; Todo se procesa localmente en tu dispositivo; nada se sube a internet.
+  &nbsp;—&nbsp; <span style="opacity:.6;">Build 2026-09-24-2</span>
 </footer>
 
 <div id="toast" role="status"></div>
@@ -368,6 +422,16 @@ function fmt(t){
   return m + ':' + (s < 10 ? '0':'') + s.toFixed(1);
 }
 
+/* ---------- Tema claro / oscuro ---------- */
+function applyTheme(theme){
+  document.documentElement.dataset.theme = theme;
+  $('themeToggle').textContent = theme === 'light' ? '🌙' : '☀️';
+  $('themeToggle').title = theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+  store.set('ep_theme', theme);
+}
+applyTheme(store.get('ep_theme') || 'dark');
+$('themeToggle').onclick = () => applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+
 /* ---------- Handles de archivo (solo Chrome/Edge Mac/PC vía File System Access API) ---------- */
 const FS_API = typeof window.showOpenFilePicker === 'function';
 const idb = (() => {
@@ -424,7 +488,7 @@ const idb = (() => {
 /* =====================================================================
    MOTOR DE AUDIO
    ===================================================================== */
-let ctx = null, masterIn = null, dryGain = null, wetGain = null, jungle = null;
+let ctx = null, masterIn = null, dryGain = null, wetGain = null, jungle = null, chordAnalyser = null;
 
 function ensureCtx(){
   if (ctx) return ctx;
@@ -435,6 +499,8 @@ function ensureCtx(){
   jungle = new Jungle(ctx);
   masterIn.connect(dryGain); dryGain.connect(ctx.destination);
   masterIn.connect(jungle.input); jungle.output.connect(wetGain); wetGain.connect(ctx.destination);
+  chordAnalyser = ctx.createAnalyser();
+  chordAnalyser.fftSize = 8192; chordAnalyser.smoothingTimeConstant = 0.55;
   return ctx;
 }
 
@@ -654,6 +720,7 @@ function renderStems(){
     box.appendChild(row);
   }
   applyMix();
+  populateChordSources();
 }
 
 /* ---------- Transporte y sincronía ---------- */
@@ -994,20 +1061,32 @@ function metLoop(){
   const bpm = clamp(+$('metBpm').value || 100, 30, 260);
   const beats = clamp(+$('metBeats').value || 4, 1, 12);
   const spb = 60 / bpm;
-  while (metNext < ctx.currentTime + 0.12){
+  // Si el navegador puso en pausa esta pestaña (cambiaste de app un momento), metNext puede
+  // quedar muy atrasado. Sin esto, al volver se dispara una ráfaga de golpes de una sola vez
+  // que se siente como si el metrónomo se hubiera "trabado" o no respondiera.
+  if (metNext < ctx.currentTime - 0.5) metNext = ctx.currentTime + 0.02;
+  let guard = 0;
+  while (metNext < ctx.currentTime + 0.12 && guard < 8){
     metClick(metNext, metBeat % beats === 0);
-    metNext += spb; metBeat++;
+    metNext += spb; metBeat++; guard++;
   }
 }
-function metToggle(){
+function metStart(){
   ensureCtx();
   if (ctx.state === 'suspended') ctx.resume();
-  metOn = !metOn;
-  $('metToggle').textContent = metOn ? '■ Detener' : '▶ Iniciar';
-  $('metToggle').className = metOn ? 'active' : '';
-  if (metOn){ metNext = ctx.currentTime + 0.08; metBeat = 0; metTimer = setInterval(metLoop, 30); }
-  else clearInterval(metTimer);
+  clearInterval(metTimer); metTimer = null; // por si quedó alguno colgado de un estado previo
+  metOn = true; metNext = ctx.currentTime + 0.08; metBeat = 0;
+  metTimer = setInterval(metLoop, 30);
+  $('metToggle').textContent = '■ Detener';
+  $('metToggle').className = 'active';
 }
+function metStop(){
+  clearInterval(metTimer); metTimer = null;
+  metOn = false;
+  $('metToggle').textContent = '▶ Iniciar';
+  $('metToggle').className = '';
+}
+function metToggle(){ metOn ? metStop() : metStart(); }
 $('metToggle').onclick = metToggle;
 $('metTap').onclick = () => {
   const now = performance.now(); taps.push(now);
@@ -1017,6 +1096,226 @@ $('metTap').onclick = () => {
     $('metBpm').value = Math.round(clamp(60000 / iv, 30, 260));
   }
 };
+
+/* ---------- Acordes en vivo: chroma + plantillas mayor/menor sobre una fuente elegida ---------- */
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const CHORD_TEMPLATE_MAJ = [1,0,0,0,1,0,0,1,0,0,0,0]; // fundamental, 3ª mayor, 5ª justa
+const CHORD_TEMPLATE_MIN = [1,0,0,1,0,0,0,1,0,0,0,0]; // fundamental, 3ª menor, 5ª justa
+let chordOn = false, chordSourceNode = null, chordLastLabel = null, chordVotes = [], chordLastTick = 0;
+
+function populateSourceSelect(id){
+  const sel = $(id); if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="master">Mezcla completa</option>';
+  for (const s of stems){
+    const o = document.createElement('option'); o.value = 'stem:' + s.id; o.textContent = s.name;
+    sel.appendChild(o);
+  }
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+function populateChordSources(){
+  populateSourceSelect('chordSource');
+  populateSourceSelect('tempoSource');
+  populateSourceSelect('lyricsSource');
+}
+function getAnalysisFile(selectId){
+  const sel = $(selectId); if (!sel) return stems[0] ? stems[0].file : null;
+  const val = sel.value;
+  if (val && val.startsWith('stem:')){
+    const id = +val.split(':')[1];
+    const s = stems.find(x => x.id === id);
+    if (s) return s.file;
+  }
+  return stems[0] ? stems[0].file : null; // "Mezcla completa": si hay varios stems, usa el primero como aproximación
+}
+function connectChordSource(){
+  if (!ctx || !chordAnalyser) return;
+  if (chordSourceNode){ try { chordSourceNode.disconnect(chordAnalyser); } catch(e){} chordSourceNode = null; }
+  const val = $('chordSource').value;
+  if (val === 'master'){ chordSourceNode = masterIn; }
+  else {
+    const id = +val.split(':')[1];
+    const stem = stems.find(s => s.id === id);
+    chordSourceNode = stem ? stem.gain : masterIn;
+  }
+  if (chordSourceNode) chordSourceNode.connect(chordAnalyser);
+}
+function computeChroma(){
+  const N = chordAnalyser.frequencyBinCount;
+  const data = new Float32Array(N);
+  chordAnalyser.getFloatFrequencyData(data);
+  const chroma = new Array(12).fill(0);
+  const sr = ctx.sampleRate, fftSize = chordAnalyser.fftSize;
+  let energy = 0;
+  for (let i = 2; i < N; i++){
+    const freq = i * sr / fftSize;
+    if (freq < 55 || freq > 3500) continue; // rango útil para fundamentales de armonía
+    const mag = Math.pow(10, data[i] / 20);
+    if (!isFinite(mag) || mag <= 0) continue;
+    energy += mag;
+    const midi = 69 + 12 * Math.log2(freq / 440);
+    const pc = ((Math.round(midi) % 12) + 12) % 12;
+    chroma[pc] += mag;
+  }
+  const max = Math.max(...chroma) || 1;
+  return { chroma: chroma.map(v => v / max), energy };
+}
+function detectChord(chroma){
+  let best = null, bestScore = -Infinity;
+  for (let root = 0; root < 12; root++){
+    for (const [tpl, suffix] of [[CHORD_TEMPLATE_MAJ, ''], [CHORD_TEMPLATE_MIN, 'm']]){
+      let score = 0;
+      for (let i = 0; i < 12; i++) score += chroma[i] * tpl[(i - root + 12) % 12];
+      if (score > bestScore){ bestScore = score; best = NOTE_NAMES[root] + suffix; }
+    }
+  }
+  return best;
+}
+function tickChords(){
+  if (!chordOn || !chordAnalyser) return;
+  const now = performance.now();
+  if (now - chordLastTick < 150) return; // ~6-7 lecturas por segundo, suficiente y liviano
+  chordLastTick = now;
+  const { chroma, energy } = computeChroma();
+  if (energy < 0.6){ // silencio o señal muy débil en la fuente elegida
+    $('chordReadout').textContent = '—'; $('chordReadout').classList.add('idle');
+    chordVotes = [];
+    return;
+  }
+  const label = detectChord(chroma);
+  chordVotes.push(label);
+  if (chordVotes.length > 4) chordVotes.shift();
+  // exige consistencia en las últimas lecturas antes de mostrar el cambio, para evitar parpadeo
+  const consistent = chordVotes.length >= 3 && chordVotes.every(v => v === chordVotes[0]);
+  if (consistent && chordVotes[0] !== chordLastLabel){
+    chordLastLabel = chordVotes[0];
+    $('chordReadout').textContent = chordLastLabel; $('chordReadout').classList.remove('idle');
+    const hist = $('chordHistory'); const span = document.createElement('span');
+    span.textContent = chordLastLabel; hist.appendChild(span);
+    while (hist.children.length > 24) hist.removeChild(hist.firstChild);
+  }
+}
+function chordStart(){
+  ensureCtx(); connectChordSource();
+  chordOn = true; chordVotes = []; chordLastLabel = null;
+  $('chordToggle').textContent = '■ Detener'; $('chordToggle').className = 'active';
+  $('chordReadout').textContent = 'Escuchando…'; $('chordReadout').classList.add('idle');
+}
+function chordStop(){
+  chordOn = false;
+  $('chordToggle').textContent = '▶ Activar'; $('chordToggle').className = '';
+  $('chordReadout').textContent = '—'; $('chordReadout').classList.add('idle');
+}
+$('chordToggle').onclick = () => chordOn ? chordStop() : chordStart();
+$('chordSource').onchange = () => { if (chordOn) connectChordSource(); };
+
+/* ---------- Detección automática de tempo (autocorrelación sobre la envolvente de ataques) ---------- */
+async function detectTempo(){
+  const file = getAnalysisFile('tempoSource');
+  if (!file){ toast('Carga audio primero.'); return; }
+  const btn = $('tempoDetectBtn'); const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Analizando…';
+  try {
+    ensureCtx();
+    const buf = await file.arrayBuffer();
+    const audio = await ctx.decodeAudioData(buf.slice(0));
+    const ch = audio.getChannelData(0);
+    const sr = audio.sampleRate;
+    const maxSamples = Math.min(ch.length, sr * 90); // los primeros ~90s bastan y mantienen la app ágil
+    const hop = 512;
+    const frames = Math.floor(maxSamples / hop);
+    if (frames < 20){ toast('El audio es demasiado corto para detectar tempo.'); return; }
+    const energy = new Float32Array(frames);
+    for (let i = 0; i < frames; i++){
+      let sum = 0; const s0 = i * hop, s1 = Math.min(s0 + hop, maxSamples);
+      for (let j = s0; j < s1; j++) sum += ch[j] * ch[j];
+      energy[i] = Math.sqrt(sum / (s1 - s0));
+    }
+    const onset = new Float32Array(frames); // solo picos de energía (ataques/golpes)
+    for (let i = 1; i < frames; i++) onset[i] = Math.max(0, energy[i] - energy[i - 1]);
+    const hopTime = hop / sr;
+    const minLag = Math.max(1, Math.round(60 / 220 / hopTime));  // ~220 BPM máx
+    const maxLag = Math.min(frames - 1, Math.round(60 / 50 / hopTime)); // ~50 BPM mín
+    let bestLag = minLag, bestScore = -Infinity;
+    for (let lag = minLag; lag <= maxLag; lag++){
+      let score = 0;
+      for (let i = lag; i < frames; i++) score += onset[i] * onset[i - lag];
+      if (score > bestScore){ bestScore = score; bestLag = lag; }
+    }
+    let bpm = 60 / (bestLag * hopTime);
+    while (bpm < 70) bpm *= 2;   // corrige el error clásico de octava (mitad/doble del pulso real)
+    while (bpm > 190) bpm /= 2;
+    bpm = Math.round(clamp(bpm, 30, 260));
+    $('metBpm').value = bpm;
+    toast('Tempo detectado: ' + bpm + ' BPM — verifica de oído, sobre todo en compases o ritmos poco marcados.');
+  } catch(e){
+    toast('No se pudo analizar el tempo de este archivo.');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+$('tempoDetectBtn').onclick = detectTempo;
+
+/* ---------- Transcripción de letra desde el audio (Whisper vía transformers.js, carga perezosa) ---------- */
+let whisperPipeline = null;
+async function ensureWhisper(onProgress){
+  if (whisperPipeline) return whisperPipeline;
+  const mod = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+  mod.env.allowLocalModels = false;
+  whisperPipeline = await mod.pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
+    quantized: true,
+    progress_callback: onProgress
+  });
+  return whisperPipeline;
+}
+async function resampleTo16k(file){
+  const buf = await file.arrayBuffer();
+  const decoded = await ctx.decodeAudioData(buf.slice(0));
+  const targetRate = 16000;
+  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
+  const src = offline.createBufferSource();
+  src.buffer = decoded; src.connect(offline.destination); src.start(0);
+  const rendered = await offline.startRendering();
+  return rendered.getChannelData(0);
+}
+function secondsToLRCTag(t){
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return '[' + String(m).padStart(2, '0') + ':' + s.toFixed(2).padStart(5, '0') + ']';
+}
+async function transcribeLyrics(){
+  const file = getAnalysisFile('lyricsSource');
+  if (!file){ toast('Carga audio primero.'); return; }
+  ensureCtx();
+  const btn = $('lrcTranscribeBtn'); const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Cargando modelo…';
+  try {
+    const transcriber = await ensureWhisper(p => {
+      if (p && p.status === 'progress') btn.textContent = 'Descargando modelo… ' + Math.round(p.progress || 0) + '%';
+    });
+    btn.textContent = 'Preparando audio…';
+    const audioData = await resampleTo16k(file);
+    btn.textContent = 'Transcribiendo… (puede tardar)';
+    const output = await transcriber(audioData, {
+      return_timestamps: true, chunk_length_s: 30, stride_length_s: 5
+    });
+    const chunks = (output && output.chunks) || [];
+    if (!chunks.length){ toast('No se detectó voz reconocible en esta fuente.'); return; }
+    let lrc = '';
+    for (const c of chunks){
+      const t = (c.timestamp && c.timestamp[0]) || 0;
+      const text = (c.text || '').trim();
+      if (text) lrc += secondsToLRCTag(t) + text + '\n';
+    }
+    loadLyrics(lrc);
+    toast('Letra transcrita automáticamente — revísala, la transcripción de voz cantada nunca es perfecta.');
+  } catch(e){
+    console.error(e);
+    toast('No se pudo transcribir (revisa tu conexión a internet la primera vez, o intenta con el stem de voz aislado).');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+$('lrcTranscribeBtn').onclick = transcribeLyrics;
 
 /* ---------- Persistencia por canción + índice de Biblioteca ---------- */
 let sessionKey = null, saveTimer = null;
@@ -1345,6 +1644,7 @@ function raf(){
       s.ui.meter.style.width = (m / 255 * 100) + '%';
     }
   }
+  tickChords();
   requestAnimationFrame(raf);
 }
 requestAnimationFrame(raf);
